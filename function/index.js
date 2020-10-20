@@ -99,7 +99,11 @@ app.delete("/api/delete/:item_id", (req, res) => {
 });
 
 exports.app = functions.https.onRequest(app);
+//dodati socket oko API-ja
 
-app.get("/hello-world", (req, res) => {
+
+
+/*app.get("/hello-world", (req, res) => {
   return res.status(200).send("Hello World!");
 });
+*/
