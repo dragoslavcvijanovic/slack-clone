@@ -2,42 +2,45 @@ import React, { Component, useState, useEffect } from "react";
 import "./Sidebar.css";
 import FiberManualRecordIcon from "@material-ui/icons/FiberManualRecord";
 import CreateIcon from "@material-ui/icons/Create";
-import InsertCommentIcon from "@material-ui/icons/InsertComment";
 import SidebarOption from "./SidebarOption.js";
-import InboxIcon from "@material-ui/icons/Inbox";
-import DraftsIcon from "@material-ui/icons/Drafts";
-import BookmarkBorderIcon from "@material-ui/icons/BookmarkBorder";
-import PeopleAltIcon from "@material-ui/icons/PeopleAlt";
-import AppsIcon from "@material-ui/icons/Apps";
-import FileCopyIcon from "@material-ui/icons/FileCopy";
-import ExpandLessIcon from "@material-ui/icons/ExpandLess";
-import ExpandMoreIcon from "@material-ui/icons/ExpandMore";
 import AddIcon from "@material-ui/icons/Add";
-import db from "../firebase";
 import { useStateValue } from "./StateProvider";
-import DeleteIcon from "@material-ui/icons/Delete";
+import { socket } from "../SocketServer";
+import { useImmer } from "use-immer";
+import { useParams } from "react-router-dom";
 
 function Sidebar() {
-  const [channels, setChannels] = useState([]);
+  const { roomId } = useParams();
+  const [channels, setChannels] = useImmer([]);
+
   const [{ user }] = useStateValue();
 
-  //pokupi podatke iz firebase
   useEffect(() => {
-    db.collection("room").onSnapshot((snapshot) =>
-      setChannels(
-        snapshot.docs.map((doc) => ({
-          id: doc.id,
-          name: doc.data().name,
-        }))
-      )
-    );
-  }, []);
+    socket.emit("getRoomList", { roomId: roomId });
+  }, [roomId]);
+
+  //spisak room-ova
+  useEffect(() => {
+    if (!roomId) {
+      socket.on("roomList", (roomList) => {
+        console.log("room list");
+        setChannels((draft) => {
+          draft.splice(0, draft.length);
+        });
+        roomList.forEach((elem) =>
+          setChannels((draft) => {
+            console.log(elem);
+            draft.push(elem);
+          })
+        );
+      });
+    }
+  }, [roomId, setChannels]);
 
   return (
     <div className="Sidebar">
       <div className="sidebar_header">
         <div className="sidebar_info">
-          <h2> {user?.displayName}</h2>
           <h3>
             <FiberManualRecordIcon />
             {user?.displayName}
@@ -45,22 +48,10 @@ function Sidebar() {
         </div>
         <CreateIcon />
       </div>
-      {/*
-                <SidebarOption Icon = {InsertCommentIcon} title = "Threads"/>
-                <SidebarOption Icon = {InboxIcon} title = "Mention & reactions" />
-                <SidebarOption Icon = {DraftsIcon} title = "Saved items" />
-                <SidebarOption Icon = {BookmarkBorderIcon} title = "Channel browser" />
-                <SidebarOption Icon = {PeopleAltIcon} title = "People & user groups" />
-                <SidebarOption Icon = {AppsIcon} title = "Apps" />
-                <SidebarOption Icon = {FileCopyIcon} title = "File browser" />
-                <SidebarOption Icon = {ExpandLessIcon} title = "Show less" />
-                <hr/>
-              */}
-      <SidebarOption Icon={ExpandMoreIcon} title="Channels" />
-      <hr />
+
       <SidebarOption Icon={AddIcon} addChannelOption title="Add Channel" />
-      {channels.map((channel) => (
-        <SidebarOption title={channel.name} id={channel.id} key={channel.id} />
+      {channels.map(({ id, name }) => (
+        <SidebarOption title={name} id={id} key={id} />
       ))}
     </div>
   );
