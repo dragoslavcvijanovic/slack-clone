@@ -67,6 +67,11 @@ function Chat() {
       socket.removeAllListeners();
     });
 
+    socket.on("serverSaljeFajl", (poruka) => {
+      console.log("serverSaljeFajl");
+      console.log(poruka);
+    });
+
     return () => {
       socket.removeAllListeners();
     };
@@ -75,7 +80,7 @@ function Chat() {
   function scrollToBottom() {
     messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
   }
-  //posalji poruku, server dobija određene podatke
+
   function addMessage(message) {
     socket.emit("sendMessage", {
       input: message.input,
@@ -126,3 +131,4 @@ function Chat() {
   );
 }
 export default Chat;
+
