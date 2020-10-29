@@ -1,5 +1,6 @@
 import React from "react";
 import "./Message.css";
+import ReactEmoji from "react-emoji";
 // {timestamp?.toUTCString()}
 function Message({ id, message, timestamp, user, userImage }) {
   if (message.startsWith("<a")) {
@@ -26,7 +27,7 @@ function Message({ id, message, timestamp, user, userImage }) {
           <h4>
             {user} <span className="message_timestamp"></span>
           </h4>
-          <p>{message}</p>
+          <p>{ReactEmoji.emojify(message)}</p>
         </div>
       </div>
     );
