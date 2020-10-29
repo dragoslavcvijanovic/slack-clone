@@ -1,3 +1,4 @@
+
 const firebase = require("firebase");
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
@@ -7,6 +8,8 @@ const app = express();
 const socketIo = require("socket.io");
 const http = require("http");
 const port = process.env.PORT || 4001;
+var stream = require("stream");
+
 app.use(cors({ origin: true }));
 
 const server = http.createServer(app);
@@ -20,7 +23,7 @@ admin.initializeApp({
 const db = admin.firestore();
 
 const io = socketIo(server);
-// desi se kada se neko konektovao, uzima svoj soket
+
 io.on("connection", (socket) => {
   console.log("New client connected: " + socket.id);
   console.log(socket.request.sessionID);
@@ -49,7 +52,6 @@ io.on("connection", (socket) => {
     });
   });
 
-  //vrati podatke o konkretnoj osobi
   socket.on("userLogin", (roomIdData) => {
     console.log("user login: " + roomIdData.roomId);
 
@@ -81,7 +83,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("addRoom", (newRoomData) => {
-    console.log("add room");
+    console.log("ädd room");
     db.collection("room")
       .add({
         name: newRoomData.name,
@@ -126,4 +128,68 @@ io.on("connection", (socket) => {
         return true;
       });
   });
+  socket.on("saljemFajl", (poruka) => {
+    console.log("saljem fajl sa sa klineta stigao:");
+    console.log(poruka);
+    //socket.broadcast.emit("serverVamSaljeFajl", poruka)
+    // io.emit("serverSaljeFajl", poruka)
+    const b = db
+      .collection("files")
+      .add(poruka)
+      .then((res) => {
+        poruka.id = res.id;
+
+        let data = JSON.parse(
+          JSON.stringify({
+            message: "<a |/downloadFile/" + poruka.id + "|" + poruka.ime + "|",
+            timestamp: Date.now(),
+            user: poruka.user,
+            userImage: poruka.photoURL,
+          })
+        );
+
+        const a = db
+          .collection("room")
+          .doc(poruka.channelId)
+          .collection("messages")
+          .add(data)
+          .then((res) => {
+            data.id = res.id;
+            data.roomId = poruka.channelId;
+            io.emit("addMessageFromServer", data);
+            return true;
+          });
+      });
+  });
 });
+
+// read item
+app.get("/downloadFile/:item_id", (req, res) => {
+  (async () => {
+    try {
+      const document = db.collection("files").doc(req.params.item_id);
+      let item = await document.get();
+      let response = item.data();
+      // return res.status(200).send(response.content);
+
+      var fileContents = response.content;
+
+      var readStream = new stream.PassThrough();
+      readStream.end(fileContents);
+
+      res.set("Content-disposition", "attachment; filename=" + item.data().ime);
+      res.set("Content-Type", item.data().type);
+
+      readStream.pipe(res);
+    } catch (error) {
+      console.log(error);
+      return res.status(500).send(error);
+    }
+  })();
+});
+
+exports.app = functions.https.onRequest(app);
+
+server.listen(port, () => console.log(`Listening on port ${port}`));
+
+app.listen(3001);
